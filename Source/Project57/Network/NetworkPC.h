@@ -13,5 +13,7 @@ UCLASS()
 class PROJECT57_API ANetworkPC : public APlayerController
 {
 	GENERATED_BODY()
+public:
+	virtual void BeginPlay() override;
 	
 };
