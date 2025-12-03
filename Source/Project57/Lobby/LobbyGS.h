@@ -3,8 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UObject/ObjectMacros.h"
 #include "GameFramework/GameStateBase.h"
 #include "LobbyGS.generated.h"
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnChangedLeftTime, const int32, InLeftTime);
 
 /**
  * 
@@ -13,5 +16,19 @@ UCLASS()
 class PROJECT57_API ALobbyGS : public AGameStateBase
 {
 	GENERATED_BODY()
+public:
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 	
+	UFUNCTION()
+	void OnRep_LeftTime();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", Replicated, ReplicatedUsing = "OnRep_LeftTime")
+	int32 LeftTime = 60;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", Replicated)
+	int32 ConnectionCount = 0;
+
+	//CustomEvent ª°∞£¡Ÿ
+	UPROPERTY(BlueprintAssignable)
+	FOnChangedLeftTime OnChangeLeftTime;
 };

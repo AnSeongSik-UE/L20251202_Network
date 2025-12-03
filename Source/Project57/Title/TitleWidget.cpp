@@ -27,7 +27,7 @@ void UTitleWidget::StartServer()
 void UTitleWidget::Connect()
 {
 	SaveData();
-	UGameplayStatics::OpenLevel(GetWorld(), FName(ServerIP->GetText().ToString()));
+	UGameplayStatics::OpenLevel(GetWorld(), FName(ServerIP->GetText().ToString()), true, TEXT("Option"));
 }
 
 void UTitleWidget::SaveData()

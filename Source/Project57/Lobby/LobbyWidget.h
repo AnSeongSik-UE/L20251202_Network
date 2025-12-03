@@ -44,4 +44,7 @@ public:
 
 	UFUNCTION()
 	void ProcessOnTextChanged(const FText& InText);
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateLeftTime(int32 InLeftTime);
 };
