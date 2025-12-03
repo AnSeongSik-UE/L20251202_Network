@@ -4,6 +4,9 @@
 #include "TitleWidget.h"
 #include "Components/EditableTextBox.h"
 #include "Components/Button.h"
+#include "DataGameInstanceSubsystem.h"
+
+#include "Kismet/GameplayStatics.h"
 
 void UTitleWidget::NativeConstruct()
 {
@@ -17,8 +20,23 @@ void UTitleWidget::NativeConstruct()
 
 void UTitleWidget::StartServer()
 {
+	SaveData();
+	UGameplayStatics::OpenLevel(GetWorld(), TEXT("Lobby"), true, TEXT("listen"));
 }
 
 void UTitleWidget::Connect()
 {
+	SaveData();
+	UGameplayStatics::OpenLevel(GetWorld(), FName(ServerIP->GetText().ToString()));
+}
+
+void UTitleWidget::SaveData()
+{
+	UGameInstance* GI = UGameplayStatics::GetGameInstance(GetWorld());
+	if (GI)
+	{
+		UDataGameInstanceSubsystem* MySubsystem = GI->GetSubsystem<UDataGameInstanceSubsystem>();
+		MySubsystem->UserID = UserID->GetText().ToString();
+		MySubsystem->Password = Password->GetText().ToString();
+	}
 }
