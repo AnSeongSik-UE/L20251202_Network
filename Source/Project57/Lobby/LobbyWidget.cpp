@@ -10,6 +10,7 @@
 #include "LobbyGS.h"
 #include "LobbyPC.h"
 #include "../Title/DataGameInstanceSubsystem.h"
+#include "LobbyGM.h"
 
 #include "Kismet/GameplayStatics.h"
 
@@ -40,11 +41,10 @@ void ULobbyWidget::NativeOnInitialized()
 
 void ULobbyWidget::Start()
 {
-	ALobbyGS* GS = Cast<ALobbyGS>(UGameplayStatics::GetGameState(GetWorld()));
-	if (GS)
+	ALobbyGM* GM = Cast<ALobbyGM>(UGameplayStatics::GetGameMode(GetWorld()));
+	if (GM)
 	{
-		GS->bIsStarted = true;
-		GetWorld()->ServerTravel(TEXT("InGame"));
+		GM->StartGame();
 	}
 }
 

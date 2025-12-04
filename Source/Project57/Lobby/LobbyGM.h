@@ -29,4 +29,8 @@ public:
 	FTimerHandle LeftTimerHandle;
 
 	void CheckConnectionCount();
+
+	void StopTimer();
+
+	void StartGame();
 };

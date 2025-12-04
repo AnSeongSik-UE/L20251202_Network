@@ -5,6 +5,7 @@
 #include "Net/UnrealNetwork.h"
 #include "LobbyPC.h"
 #include "LobbyWidget.h"
+#include "LobbyGM.h"
 
 #include "Kismet/GameplayStatics.h"
 
@@ -36,4 +37,21 @@ void ALobbyGS::BeginPlay()
 {
 	UE_LOG(LogTemp, Warning, TEXT("ALobbyGS::BeginPlay"));
 	Super::BeginPlay();
+}
+void ALobbyGS::CountDownLeftTime()
+{
+	//Server
+	if (LeftTime > 0)
+	{
+		LeftTime--;
+		OnRep_LeftTime();
+	}
+	else
+	{
+		ALobbyGM* GM = Cast<ALobbyGM>(UGameplayStatics::GetGameMode(GetWorld()));
+		if (GM)
+		{
+			GM->StartGame();
+		}
+	}
 }

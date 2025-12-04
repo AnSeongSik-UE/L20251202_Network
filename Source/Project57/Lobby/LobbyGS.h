@@ -41,6 +41,5 @@ public:
 
 	virtual void BeginPlay() override;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
-	uint8 bIsStarted : 1 = false;
+	void CountDownLeftTime();
 };

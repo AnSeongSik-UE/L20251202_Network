@@ -3,6 +3,8 @@
 
 #include "LobbyGM.h"
 #include "LobbyGS.h"
+#include "LobbyPC.h"
+
 #include "Kismet/GameplayStatics.h"
 
 ALobbyGM::ALobbyGM()
@@ -48,12 +50,7 @@ void ALobbyGM::BeginPlay()
 				ALobbyGS* GS = GetGameState<ALobbyGS>();
 				if (GS)
 				{
-					GS->LeftTime--;
-					GS->OnRep_LeftTime();
-					if (GS->LeftTime == 0 || GS->bIsStarted)
-					{
-						GetWorld()->GetTimerManager().ClearTimer(LeftTimerHandle);
-					}
+					GS->CountDownLeftTime();
 				}
 			}),
 		1.0f,
@@ -75,4 +72,20 @@ void ALobbyGM::CheckConnectionCount()
 		GS->ConnectionCount = TempCount;
 		GS->OnRep_ConnectionCount();
 	}
+}
+
+void ALobbyGM::StopTimer()
+{
+	GetWorldTimerManager().ClearTimer(LeftTimerHandle);
+}
+
+void ALobbyGM::StartGame()
+{
+	StopTimer();
+	for (auto Iter = GetWorld()->GetPlayerControllerIterator(); Iter; ++Iter)
+	{
+		ALobbyPC* PC = Cast<ALobbyPC>(*Iter);
+		PC->S2C_ShowLoadingScreen();
+	}
+	GetWorld()->ServerTravel(TEXT("InGame"));
 }
