@@ -50,6 +50,10 @@ void ALobbyGM::BeginPlay()
 				{
 					GS->LeftTime--;
 					GS->OnRep_LeftTime();
+					if (GS->LeftTime == 0 || GS->bIsStarted)
+					{
+						GetWorld()->GetTimerManager().ClearTimer(LeftTimerHandle);
+					}
 				}
 			}),
 		1.0f,

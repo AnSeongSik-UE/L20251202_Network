@@ -6,6 +6,7 @@
 #include "Components/ScrollBox.h"
 #include "Components/EditableTextBox.h"
 #include "Components/TextBlock.h"
+#include "Components/RichTextBlock.h"
 #include "LobbyGS.h"
 #include "LobbyPC.h"
 #include "../Title/DataGameInstanceSubsystem.h"
@@ -39,7 +40,12 @@ void ULobbyWidget::NativeOnInitialized()
 
 void ULobbyWidget::Start()
 {
-	GetWorld()->ServerTravel(TEXT("InGame"));
+	ALobbyGS* GS = Cast<ALobbyGS>(UGameplayStatics::GetGameState(GetWorld()));
+	if (GS)
+	{
+		GS->bIsStarted = true;
+		GetWorld()->ServerTravel(TEXT("InGame"));
+	}
 }
 
 void ULobbyWidget::ProcessOnTextCommitted(const FText& InText, ETextCommit::Type CommitMethod)
@@ -81,8 +87,15 @@ void ULobbyWidget::UpdateLeftTime(int32 InLeftTime)
 {
 	if (LeftTime)
 	{
-		FString Message = FString::Printf(TEXT("%d초 남음"), InLeftTime);
-		LeftTime->SetText(FText::FromString(Message));
+		if(InLeftTime >= 0)
+		{
+			FString Message = FString::Printf(TEXT("%d초 남음"), InLeftTime);
+			LeftTime->SetText(FText::FromString(Message));
+		}
+		else
+		{
+			Start();
+		}
 	}
 }
 
@@ -100,18 +113,41 @@ void ULobbyWidget::AddMessage(const FText& Message)
 {
 	if (ChatScrollBox)
 	{
-		UTextBlock* NewMessageBlock = NewObject<UTextBlock>(ChatScrollBox);
-		if(NewMessageBlock)
+		//UTextBlock* NewMessageBlock = NewObject<UTextBlock>(ChatScrollBox);
+		//if(NewMessageBlock)
+		//{
+		//	NewMessageBlock->SetText(Message);
+		//
+		//	FSlateFontInfo FontInfo = NewMessageBlock->GetFont();
+		//	FontInfo.Size = 20;
+		//	NewMessageBlock->SetFont(FontInfo);
+		//	NewMessageBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0, 0, 1)));
+		//	
+		//	ChatScrollBox->AddChild(NewMessageBlock);
+		//	ChatScrollBox->ScrollToEnd();
+		//}
+
+		URichTextBlock* NewMessageBlock = NewObject<URichTextBlock>(ChatScrollBox);
+		if (NewMessageBlock)
 		{
 			NewMessageBlock->SetText(Message);
-
-			FSlateFontInfo FontInfo = NewMessageBlock->GetFont();
-			FontInfo.Size = 20;
-			NewMessageBlock->SetFont(FontInfo);
-			NewMessageBlock->SetColorAndOpacity(FSlateColor(FLinearColor(0, 0, 1)));
-			
+			NewMessageBlock->SetAutoWrapText(true);
+			NewMessageBlock->SetWrapTextAt(ChatScrollBox->GetCachedGeometry().GetLocalSize().X);
+			NewMessageBlock->SetWrappingPolicy(ETextWrappingPolicy::AllowPerCharacterWrapping);
+			if (ChatStyleSet)
+			{
+				NewMessageBlock->SetTextStyleSet(ChatStyleSet);
+			}
 			ChatScrollBox->AddChild(NewMessageBlock);
 			ChatScrollBox->ScrollToEnd();
 		}
+	}
+}
+
+void ULobbyWidget::ShowStartButton()
+{
+	if (StartButton)
+	{
+		StartButton->SetVisibility(ESlateVisibility::Visible);
 	}
 }

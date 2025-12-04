@@ -52,4 +52,9 @@ public:
 	void UpdateConnecionCount(int32 InConnectionCount);
 
 	void AddMessage(const FText& Message);
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data")
+	TObjectPtr<UDataTable> ChatStyleSet;
+
+	void ShowStartButton();
 };

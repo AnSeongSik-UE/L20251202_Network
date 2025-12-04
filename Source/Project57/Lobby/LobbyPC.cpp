@@ -23,6 +23,11 @@ void ALobbyPC::BeginPlay()
 			LobbyWidgetObject = CreateWidget<ULobbyWidget>(this, LobbyWidgetClass);
 			LobbyWidgetObject->AddToViewport();
 
+			if (LobbyWidgetObject && HasAuthority())
+			{
+				LobbyWidgetObject->ShowStartButton();
+			}
+
 			ALobbyGM* GM = Cast<ALobbyGM>(UGameplayStatics::GetGameMode(GetWorld()));
 			if (GM)
 			{
@@ -30,7 +35,9 @@ void ALobbyPC::BeginPlay()
 			}
 		}
 	}
-	UE_LOG(LogTemp, Warning, TEXT("ALobbyPC BeginPlay"));
+
+	bShowMouseCursor = true;
+	SetInputMode(FInputModeGameAndUI());
 }
 
 void ALobbyPC::Tick(float Deltaseconds)
