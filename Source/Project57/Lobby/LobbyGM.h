@@ -22,7 +22,11 @@ public:
 
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
+	virtual void Logout(AController* Exiting) override;
+
 	virtual void BeginPlay() override;
 
 	FTimerHandle LeftTimerHandle;
+
+	void CheckConnectionCount();
 };

@@ -47,4 +47,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	void UpdateLeftTime(int32 InLeftTime);
+
+	UFUNCTION(BlueprintCallable)
+	void UpdateConnecionCount(int32 InConnectionCount);
+
+	void AddMessage(const FText& Message);
 };

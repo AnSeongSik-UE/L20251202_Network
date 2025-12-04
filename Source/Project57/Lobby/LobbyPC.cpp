@@ -4,6 +4,7 @@
 #include "LobbyPC.h"
 #include "LobbyWidget.h"
 #include "LobbyGS.h"
+#include "LobbyGM.h"
 
 #include "Kismet/GameplayStatics.h"
 
@@ -21,8 +22,15 @@ void ALobbyPC::BeginPlay()
 		{
 			LobbyWidgetObject = CreateWidget<ULobbyWidget>(this, LobbyWidgetClass);
 			LobbyWidgetObject->AddToViewport();
+
+			ALobbyGM* GM = Cast<ALobbyGM>(UGameplayStatics::GetGameMode(GetWorld()));
+			if (GM)
+			{
+				GM->CheckConnectionCount();
+			}
 		}
 	}
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyPC BeginPlay"));
 }
 
 void ALobbyPC::Tick(float Deltaseconds)
@@ -35,4 +43,29 @@ void ALobbyPC::Tick(float Deltaseconds)
 	//{
 	//	LobbyWidgetObject->UpdateLeftTime(GS->LeftTime);
 	//}
+}
+
+bool ALobbyPC::C2S_SendMessage_Validate(const FText& Message)
+{
+	return true;
+}
+
+void ALobbyPC::C2S_SendMessage_Implementation(const FText& Message)
+{
+	for (auto Iter = GetWorld()->GetPlayerControllerIterator(); Iter; ++Iter)
+	{
+		ALobbyPC* PC = Cast<ALobbyPC>(*Iter);
+		if (PC)
+		{
+			PC->S2C_SendMessage(Message);
+		}
+	}
+}
+
+void ALobbyPC::S2C_SendMessage_Implementation(const FText& Message)
+{
+	if (LobbyWidgetObject)
+	{
+		LobbyWidgetObject->AddMessage(Message);
+	}
 }

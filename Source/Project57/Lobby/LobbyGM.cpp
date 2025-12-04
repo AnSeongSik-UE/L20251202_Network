@@ -3,6 +3,7 @@
 
 #include "LobbyGM.h"
 #include "LobbyGS.h"
+#include "Kismet/GameplayStatics.h"
 
 ALobbyGM::ALobbyGM()
 {
@@ -27,6 +28,13 @@ APlayerController* ALobbyGM::Login(UPlayer* NewPlayer, ENetRole InRemoteRole, co
 void ALobbyGM::PostLogin(APlayerController* NewPlayer)
 {
 	Super::PostLogin(NewPlayer);
+
+	CheckConnectionCount();
+}
+
+void ALobbyGM::Logout(AController* Exiting)
+{
+	Super::Logout(Exiting);
 }
 
 void ALobbyGM::BeginPlay()
@@ -47,4 +55,20 @@ void ALobbyGM::BeginPlay()
 		1.0f,
 		true,
 		0.0f);
+}
+
+void ALobbyGM::CheckConnectionCount()
+{
+	ALobbyGS* GS = GetGameState<ALobbyGS>();
+	if (GS)
+	{
+		int32 TempCount = 0;
+		for (auto Iter = GetWorld()->GetPlayerControllerIterator(); Iter; ++Iter)
+		{
+			TempCount++;
+		}
+		//GS->ConnectionCount = UGameplayStatics::GetNumPlayerControllers(GetWorld());
+		GS->ConnectionCount = TempCount;
+		GS->OnRep_ConnectionCount();
+	}
 }

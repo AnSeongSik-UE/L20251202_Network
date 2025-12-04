@@ -14,6 +14,7 @@ void ALobbyGS::GetLifetimeReplicatedProps(TArray<class FLifetimeProperty>& OutLi
 
 	DOREPLIFETIME(ALobbyGS, LeftTime);
 	DOREPLIFETIME(ALobbyGS, ConnectionCount);
+	UE_LOG(LogTemp, Warning, TEXT("GetLifetimeReplicatedProps"));
 }
 
 void ALobbyGS::OnRep_LeftTime()
@@ -24,4 +25,15 @@ void ALobbyGS::OnRep_LeftTime()
 	//	PC->LobbyWidgetObject->UpdateLeftTime(LeftTime);
 	//}
 	OnChangeLeftTime.Broadcast(LeftTime);
+}
+
+void ALobbyGS::OnRep_ConnectionCount()
+{
+	OnChangeConnectionCount.Broadcast(ConnectionCount);
+}
+
+void ALobbyGS::BeginPlay()
+{
+	UE_LOG(LogTemp, Warning, TEXT("ALobbyGS::BeginPlay"));
+	Super::BeginPlay();
 }
