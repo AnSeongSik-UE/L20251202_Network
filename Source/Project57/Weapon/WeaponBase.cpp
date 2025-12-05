@@ -13,6 +13,8 @@
 #include "ProjectileBase.h"
 #include "Kismet/KismetMathLibrary.h"
 
+#include "../Project57.h"
+#include "../Network/NetworkUtil.h"
 
 
 // Sets default values
@@ -23,6 +25,9 @@ AWeaponBase::AWeaponBase()
 
 	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
 	RootComponent = Mesh;
+
+	SetReplicates(true);
+	SetReplicateMovement(true);
 
 }
 
@@ -67,7 +72,67 @@ void AWeaponBase::Fire()
 		return;
 	}
 
+
+
+	//Calculate
+	FVector SpawnLocation;
+	FVector TargetLocation;
+	//FVector BulletDirection;
+	FRotator AimRotation;
+	FHitResult HitResult;
+
+	//총구에서 발사
+	SpawnLocation = Mesh->GetSocketLocation(TEXT("Muzzle"));
+	FVector WeaponForward = Mesh->GetSocketRotation(TEXT("Muzzle")).Vector().GetSafeNormal();
+	TargetLocation = SpawnLocation + (WeaponForward * 100000.0f);
+	AimRotation = UKismetMathLibrary::FindLookAtRotation(SpawnLocation, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * 0.3f));
+
+	//bool bResult = CalculateShootData(SpawnLocation, TargetLocation, BulletDirection, AimRotation);
+
+	//if (!bResult)
+	//{
+	//	return;
+	//}
+
+
+	FireProjectile(FTransform(AimRotation, SpawnLocation, FVector::OneVector),
+		HitResult);
+
+	//호출은 서버에서, 모든 클라이언트에서 실행
+	S2A_SpawnMuzzleFlash(SpawnLocation, AimRotation);
+
+	//Recoil
+	Character->AddControllerPitchInput(-0.05f);
+
+	CurrentBulletCount--;
+	UE_LOG(LogTemp, Warning, TEXT("Fire %d"), CurrentBulletCount);
+	S2A_SpawnSound(SpawnLocation);
+
+	TimeofLastShoot = GetWorld()->TimeSeconds;
+
+}
+
+void AWeaponBase::FireProjectile(FTransform SpawnTransform, FHitResult InHitResult)
+{
+	AProjectileBase* Projectile = GetWorld()->SpawnActor<AProjectileBase>(ProjectileTemplate, SpawnTransform);
+	Projectile->HitResult = InHitResult;
+	Projectile->SetOwner(this);
+}
+
+bool AWeaponBase::CalculateShootData(FVector& OutSpawnLocation, FVector& OutTargetLocation, FVector& OutBulletDirection, FRotator& OutAimRotation)
+{
+	ACharacter* Character = Cast<ACharacter>(GetOwner());
+	if (!Character)
+	{
+		return false;
+	}
+
 	APlayerController* PC = Cast<APlayerController>(Character->GetController());
+	if (!PC)
+	{
+		return false;
+	}
+
 	if (PC)
 	{
 		int32 SizeX = 0;
@@ -113,39 +178,28 @@ void AWeaponBase::Fire()
 		);
 
 		//Calculate
-		FVector SpawnLocation = Mesh->GetSocketLocation(TEXT("Muzzle"));
-		FVector TargetLocation = bResult ? HitResult.ImpactPoint : End;
-		FVector BulletDirection = (TargetLocation - SpawnLocation).GetSafeNormal();
+		OutSpawnLocation = Mesh->GetSocketLocation(TEXT("Muzzle"));
+		OutTargetLocation = bResult ? HitResult.ImpactPoint : End;
+		OutBulletDirection = (OutTargetLocation - OutSpawnLocation).GetSafeNormal();
 
-		FRotator AimRotation = UKismetMathLibrary::FindLookAtRotation(SpawnLocation, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * 0.3f));
-
-
-		FireProjectile(FTransform(AimRotation, SpawnLocation, FVector::OneVector),
-			HitResult);
-
-		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash,
-			SpawnLocation,
-			AimRotation
-			
-		);
-
-		//Recoil
-		Character->AddControllerPitchInput(-0.05f);
+		OutAimRotation = UKismetMathLibrary::FindLookAtRotation(OutSpawnLocation, OutTargetLocation + (UKismetMathLibrary::RandomUnitVector() * 0.3f));
 	}
 
-	CurrentBulletCount--;
-	UE_LOG(LogTemp, Warning, TEXT("Fire %d"), CurrentBulletCount);
-	UGameplayStatics::SpawnSoundAtLocation(GetWorld(), FireSound, GetActorLocation());
-
-	TimeofLastShoot = GetWorld()->TimeSeconds;
-
+	return true;
 }
 
-void AWeaponBase::FireProjectile(FTransform SpawnTransform, FHitResult InHitResult)
+void AWeaponBase::S2A_SpawnMuzzleFlash_Implementation(const FVector& SpawnLocation, const FRotator& AimRotation)
 {
-	AProjectileBase* Projectile = GetWorld()->SpawnActor<AProjectileBase>(ProjectileTemplate, SpawnTransform);
-	Projectile->HitResult = InHitResult;
-	Projectile->SetOwner(this);
+	UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash,
+		SpawnLocation,
+		AimRotation
+	);
+}
+
+void AWeaponBase::S2A_SpawnSound_Implementation(const FVector& SpawnLocation)
+{
+	NET_LOG(TEXT("FireSound"));
+	UGameplayStatics::SpawnSoundAtLocation(GetWorld(), FireSound, SpawnLocation);
 }
 
 

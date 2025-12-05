@@ -76,6 +76,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void Reload();
 
+	UFUNCTION(Server, Reliable)
+	void C2S_Reload();
+	void C2S_Reload_Implementation();
+
 	UFUNCTION(BlueprintCallable)
 	void DoFire();
 
@@ -85,20 +89,28 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StopFire();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Character)
+	UFUNCTION(Server, Reliable)
+	void C2S_StartFire();
+	void C2S_StartFire_Implementation();
+
+	UFUNCTION(Server, Reliable)
+	void C2S_StopFire();
+	void C2S_StopFire_Implementation();
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	uint8 bSprint : 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	uint8 bLeftLean : 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	uint8 bRightLean : 1;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	uint8 bAiming : 1;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	EWeaponState WeaponState = EWeaponState::Unarmed;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
@@ -116,7 +128,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	TObjectPtr<UInputAction> IA_IronSight;
 
-	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	TObjectPtr<UInputAction> IA_Sprint;
 
 	UFUNCTION(BlueprintCallable)
 	void HitReaction();
@@ -125,16 +138,16 @@ public:
 	void ReloadWeapon();
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	float CurrentHP = 100;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	float MaxHP = 100;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	uint8 bIsFire : 1 = false;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
 	uint8 bIsIronSight : 1 = false;
 
 
@@ -168,6 +181,28 @@ public:
 
 	void StopIronSight();
 
+	UFUNCTION(Server, Reliable)
+	void C2S_StartIronSight();
+	void C2S_StartIronSight_Implementation();
+
+	UFUNCTION(Server, Reliable)
+	void C2S_StopIronSight();
+	void C2S_StopIronSight_Implementation();
+
+	void StartSprint();
+
+	void StopSprint();
+
+	UFUNCTION(Server, Reliable)
+	void C2S_StartSprint();
+	void C2S_StartSprint_Implementation();
+
+	UFUNCTION(Server, Reliable)
+	void C2S_StopSprint();
+	void C2S_StopSprint_Implementation();
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	TObjectPtr<UParticleSystem> BloodEffect;
 
@@ -189,5 +224,5 @@ public:
 	
 	void DrawFrustum();
 
-
+	FRotator GetAimOffset() const;
 };

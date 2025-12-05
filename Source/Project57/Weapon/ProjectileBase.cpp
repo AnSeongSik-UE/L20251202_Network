@@ -27,6 +27,9 @@ AProjectileBase::AProjectileBase()
 	Movement = CreateDefaultSubobject<UProjectileMovementComponent>(TEXT("Movement"));
 	Movement->MaxSpeed = 8000.0f;
 	Movement->InitialSpeed = 8000.0f;
+
+	SetReplicates(true);
+	SetReplicateMovement(true);
 	
 }
 

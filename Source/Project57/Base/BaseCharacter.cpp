@@ -17,6 +17,8 @@
 #include "PickupItemBase.h"
 #include "Components/DecalComponent.h"
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
+#include "Net/UnrealNetwork.h"
 
 
 
@@ -81,6 +83,11 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 			&ABaseCharacter::StartIronSight);
 		UIC->BindAction(IA_IronSight, ETriggerEvent::Completed, this,
 			&ABaseCharacter::StopIronSight);
+
+		UIC->BindAction(IA_Sprint, ETriggerEvent::Started, this,
+			&ABaseCharacter::StartSprint);
+		UIC->BindAction(IA_Sprint, ETriggerEvent::Completed, this,
+			&ABaseCharacter::StopSprint);
 	}
 
 }
@@ -110,6 +117,11 @@ void ABaseCharacter::Look(float Pitch, float Yaw)
 
 void ABaseCharacter::Reload()
 {
+	C2S_Reload();
+}
+
+void ABaseCharacter::C2S_Reload_Implementation()
+{
 	AWeaponBase* ChildWeapon = Cast<AWeaponBase>(Weapon->GetChildActor());
 	if (ChildWeapon)
 	{
@@ -129,10 +141,22 @@ void ABaseCharacter::DoFire()
 void ABaseCharacter::StartFire()
 {
 	bIsFire = true;
-	DoFire();
+	C2S_StartFire();
 }
 
 void ABaseCharacter::StopFire()
+{
+	bIsFire = false;
+	C2S_StopFire();
+}
+
+void ABaseCharacter::C2S_StartFire_Implementation()
+{
+	bIsFire = true;
+	DoFire();
+}
+
+void ABaseCharacter::C2S_StopFire_Implementation()
 {
 	bIsFire = false;
 	AWeaponBase* ChildWeapon = Cast<AWeaponBase>(Weapon->GetChildActor());
@@ -228,6 +252,20 @@ void ABaseCharacter::DoHitReact()
 
 void ABaseCharacter::ProcessBeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
 {
+	//서버와 클라 둘다 실행시키는걸 막기
+	APlayerController* PC = Cast<APlayerController>(GetController());
+	if (!PC || !PC->HasAuthority())
+	{
+		return;
+	}
+	//if (PC)
+	//{
+	//	if (PC->GetNetMode() == ENetMode::NM_Client)
+	//	{
+	//		return;
+	//	}
+	//}
+
 	APickupItemBase* PickedUpItem = Cast<APickupItemBase>(OtherActor);
 
 	if (PickedUpItem)
@@ -245,11 +283,11 @@ void ABaseCharacter::ProcessBeginOverlap(AActor* OverlappedActor, AActor* OtherA
 			break;
 		}
 
+		PickedUpItem->SetOwner(this);
 		if (!PickedUpItem->bIsInfinity)
 		{
 			PickedUpItem->Destroy();
 		}
-	
 	}
 }
 
@@ -293,11 +331,64 @@ void ABaseCharacter::EquipItem(APickupItemBase* PickedUpItem)
 void ABaseCharacter::StartIronSight()
 {
 	bIsIronSight = true;
+	bAiming = true;
+	C2S_StartIronSight_Implementation();
 }
 
 void ABaseCharacter::StopIronSight()
 {
 	bIsIronSight = false;
+	bAiming = false;
+	C2S_StopIronSight_Implementation();
+}
+
+void ABaseCharacter::C2S_StartIronSight_Implementation()
+{
+	bIsIronSight = true;
+	bAiming = true;
+}
+
+void ABaseCharacter::C2S_StopIronSight_Implementation()
+{
+	bIsIronSight = false;
+	bAiming = false;
+}
+
+void ABaseCharacter::StartSprint()
+{
+	//자연스럽게 보이기 위해 일단 속도를 높임
+	GetCharacterMovement()->MaxWalkSpeed = 600.0f;
+	C2S_StartSprint();
+}
+
+void ABaseCharacter::StopSprint()
+{
+	GetCharacterMovement()->MaxWalkSpeed = 300.0f;
+	C2S_StopSprint();
+}
+
+void ABaseCharacter::C2S_StartSprint_Implementation()
+{
+	GetCharacterMovement()->MaxWalkSpeed = 600.0f;
+}
+
+void ABaseCharacter::C2S_StopSprint_Implementation()
+{
+	GetCharacterMovement()->MaxWalkSpeed = 300.0f;
+}
+
+void ABaseCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(ABaseCharacter, bSprint);
+	DOREPLIFETIME(ABaseCharacter, bLeftLean);
+	DOREPLIFETIME(ABaseCharacter, bRightLean);
+	DOREPLIFETIME(ABaseCharacter, CurrentHP);
+	DOREPLIFETIME(ABaseCharacter, MaxHP);
+	DOREPLIFETIME(ABaseCharacter, bIsFire);
+	DOREPLIFETIME(ABaseCharacter, bIsIronSight);
+	DOREPLIFETIME(ABaseCharacter, WeaponState);
 }
 
 //----------------------------------------------------------------------//
@@ -402,4 +493,12 @@ void ABaseCharacter::DrawFrustum()
 	UKismetSystemLibrary::DrawDebugLine(GetWorld(), WorldCorners[1], WorldCorners[5], LineColor, LineDuration, LineThickness);
 	UKismetSystemLibrary::DrawDebugLine(GetWorld(), WorldCorners[2], WorldCorners[6], LineColor, LineDuration, LineThickness);
 	UKismetSystemLibrary::DrawDebugLine(GetWorld(), WorldCorners[3], WorldCorners[7], LineColor, LineDuration, LineThickness);
+}
+
+FRotator ABaseCharacter::GetAimOffset() const
+{
+	const FVector AimDirWS = GetBaseAimRotation().Vector();
+	const FVector AimDirLS = ActorToWorld().InverseTransformVectorNoScale(AimDirWS);
+	const FRotator AimRotLS = AimDirLS.Rotation();
+	return AimRotLS;
 }
