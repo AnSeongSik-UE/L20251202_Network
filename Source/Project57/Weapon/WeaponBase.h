@@ -65,6 +65,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void StopFire();
 
+	FVector GetWeaponTargetLocation();
+
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Data)
 	TObjectPtr<USoundBase> FireSound;
 
@@ -82,7 +84,7 @@ public:
 
 	FTimerHandle RefireTimer;
 
-	bool CalculateShootData(FVector& OutSpawnLocation, FVector& OutTargetLocation, FVector& OutBulletDirection, FRotator& OutAimRotation);
+	bool CalculateShootData(FVector& OutSpawnLocation, FVector& OutTargetLocation, FRotator& OutAimRotation);
 
 	UFUNCTION(NetMulticast, Unreliable)
 	void S2A_SpawnMuzzleFlash(const FVector& SpawnLocation, const FRotator& AimRotation);

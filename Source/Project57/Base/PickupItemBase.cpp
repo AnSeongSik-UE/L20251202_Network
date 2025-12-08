@@ -21,7 +21,7 @@ APickupItemBase::APickupItemBase()
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(RootComponent);
 
-	SetReplicates(true);
+	bReplicates = true;
 	SetReplicateMovement(true);
 }
 

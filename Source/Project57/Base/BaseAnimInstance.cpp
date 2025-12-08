@@ -43,6 +43,8 @@ void UBaseAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 		bIsCrouched = Character->bIsCrouched;
 
 		bIsFalling = Character->GetCharacterMovement()->IsFalling();
+
+		AimRotation = Character->AimRotation;
 	}
 }
 

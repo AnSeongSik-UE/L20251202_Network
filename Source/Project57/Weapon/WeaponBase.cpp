@@ -12,6 +12,8 @@
 #include "TimerManager.h"
 #include "ProjectileBase.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "../Base/BaseCharacter.h"
+#include "Camera/CameraComponent.h"
 
 #include "../Project57.h"
 #include "../Network/NetworkUtil.h"
@@ -26,8 +28,10 @@ AWeaponBase::AWeaponBase()
 	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("Mesh"));
 	RootComponent = Mesh;
 
-	SetReplicates(true);
+	bReplicates = true;
 	SetReplicateMovement(true);
+	bNetLoadOnClient = true;
+	bNetUseOwnerRelevancy = true;
 
 }
 
@@ -48,7 +52,7 @@ void AWeaponBase::Tick(float DeltaTime)
 void AWeaponBase::Reload()
 {
 	CurrentBulletCount = MaxBulletCount;
-	UE_LOG(LogTemp, Warning, TEXT("Reload %d"), CurrentBulletCount);
+	//NET_LOG(FString::FromInt(CurrentBulletCount));
 }
 
 void AWeaponBase::Fire()
@@ -72,8 +76,6 @@ void AWeaponBase::Fire()
 		return;
 	}
 
-
-
 	//Calculate
 	FVector SpawnLocation;
 	FVector TargetLocation;
@@ -81,11 +83,11 @@ void AWeaponBase::Fire()
 	FRotator AimRotation;
 	FHitResult HitResult;
 
-	//총구에서 발사
-	SpawnLocation = Mesh->GetSocketLocation(TEXT("Muzzle"));
-	FVector WeaponForward = Mesh->GetSocketRotation(TEXT("Muzzle")).Vector().GetSafeNormal();
-	TargetLocation = SpawnLocation + (WeaponForward * 100000.0f);
-	AimRotation = UKismetMathLibrary::FindLookAtRotation(SpawnLocation, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * 0.3f));
+	////총구에서 발사
+	//SpawnLocation = Mesh->GetSocketLocation(TEXT("Muzzle"));
+	//FVector WeaponForward = Mesh->GetSocketRotation(TEXT("Muzzle")).Vector().GetSafeNormal();
+	//TargetLocation = SpawnLocation + (WeaponForward * 100000.0f);
+	//AimRotation = UKismetMathLibrary::FindLookAtRotation(SpawnLocation, TargetLocation + (UKismetMathLibrary::RandomUnitVector() * 0.3f));
 
 	//bool bResult = CalculateShootData(SpawnLocation, TargetLocation, BulletDirection, AimRotation);
 
@@ -93,7 +95,12 @@ void AWeaponBase::Fire()
 	//{
 	//	return;
 	//}
-
+	
+	bool bResult = CalculateShootData(SpawnLocation, TargetLocation, AimRotation);
+	if (!bResult)
+	{
+		return;
+	}
 
 	FireProjectile(FTransform(AimRotation, SpawnLocation, FVector::OneVector),
 		HitResult);
@@ -105,7 +112,7 @@ void AWeaponBase::Fire()
 	Character->AddControllerPitchInput(-0.05f);
 
 	CurrentBulletCount--;
-	UE_LOG(LogTemp, Warning, TEXT("Fire %d"), CurrentBulletCount);
+	//UE_LOG(LogTemp, Warning, TEXT("Fire %d"), CurrentBulletCount);
 	S2A_SpawnSound(SpawnLocation);
 
 	TimeofLastShoot = GetWorld()->TimeSeconds;
@@ -119,9 +126,9 @@ void AWeaponBase::FireProjectile(FTransform SpawnTransform, FHitResult InHitResu
 	Projectile->SetOwner(this);
 }
 
-bool AWeaponBase::CalculateShootData(FVector& OutSpawnLocation, FVector& OutTargetLocation, FVector& OutBulletDirection, FRotator& OutAimRotation)
+bool AWeaponBase::CalculateShootData(FVector& OutSpawnLocation, FVector& OutTargetLocation, FRotator& OutAimRotation)
 {
-	ACharacter* Character = Cast<ACharacter>(GetOwner());
+	ABaseCharacter* Character = Cast<ABaseCharacter>(GetOwner());
 	if (!Character)
 	{
 		return false;
@@ -133,57 +140,22 @@ bool AWeaponBase::CalculateShootData(FVector& OutSpawnLocation, FVector& OutTarg
 		return false;
 	}
 
-	if (PC)
-	{
-		int32 SizeX = 0;
-		int32 SizeY = 0;
-		int32 CenterX = 0;
-		int32 CenterY = 0;
-		FVector WorldDirection;
-		FVector WorldLocation;
-		FVector CameraLocation;
-		FRotator CameraRotation;
+	FHitResult OutHit;
 
-		PC->GetViewportSize(SizeX, SizeY);
-		CenterX = SizeX / 2;
-		CenterY = SizeY / 2;
+	const FVector Start = Character->GetCameraComponent()->GetComponentLocation();
+	const FVector End = Start + (Character->GetCameraComponent()->GetForwardVector() * 10000.0f);
 
-		PC->DeprojectScreenPositionToWorld((float)CenterX, (float)CenterY,
-			WorldLocation, WorldDirection);
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.AddIgnoredActor(Character);
 
-		PC->GetPlayerViewPoint(CameraLocation, CameraRotation);
+	GetWorld()->LineTraceSingleByChannel(OutHit, Start, End, ECC_Visibility, QueryParams);
 
-		FVector Start = CameraLocation;
-		FVector End = CameraLocation + WorldDirection * 100000.0f;
+	//Calculate
+	OutSpawnLocation = Mesh->GetSocketLocation(TEXT("Muzzle"));
+	OutTargetLocation = OutHit.bBlockingHit ? OutHit.ImpactPoint : OutHit.TraceEnd;
 
-		TArray<TEnumAsByte<EObjectTypeQuery>> ObjectTypes;
-		ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldStatic));
-		ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_WorldDynamic));
-		ObjectTypes.Add(UEngineTypes::ConvertToObjectType(ECollisionChannel::ECC_PhysicsBody));
-
-		TArray<AActor*> IngnoreActors;
-		IngnoreActors.Add(GetOwner());
-		FHitResult HitResult;
-
-		bool bResult = UKismetSystemLibrary::LineTraceSingleForObjects(
-			GetWorld(),
-			Start,
-			End,
-			ObjectTypes,
-			true,
-			IngnoreActors,
-			EDrawDebugTrace::None,
-			HitResult,
-			true
-		);
-
-		//Calculate
-		OutSpawnLocation = Mesh->GetSocketLocation(TEXT("Muzzle"));
-		OutTargetLocation = bResult ? HitResult.ImpactPoint : End;
-		OutBulletDirection = (OutTargetLocation - OutSpawnLocation).GetSafeNormal();
-
-		OutAimRotation = UKismetMathLibrary::FindLookAtRotation(OutSpawnLocation, OutTargetLocation + (UKismetMathLibrary::RandomUnitVector() * 0.3f));
-	}
+	OutAimRotation = UKismetMathLibrary::FindLookAtRotation(OutSpawnLocation, OutTargetLocation + (UKismetMathLibrary::RandomUnitVector() * 0.3f));
 
 	return true;
 }
@@ -198,7 +170,7 @@ void AWeaponBase::S2A_SpawnMuzzleFlash_Implementation(const FVector& SpawnLocati
 
 void AWeaponBase::S2A_SpawnSound_Implementation(const FVector& SpawnLocation)
 {
-	NET_LOG(TEXT("FireSound"));
+	//NET_LOG(TEXT("FireSound"));
 	UGameplayStatics::SpawnSoundAtLocation(GetWorld(), FireSound, SpawnLocation);
 }
 
@@ -206,5 +178,29 @@ void AWeaponBase::S2A_SpawnSound_Implementation(const FVector& SpawnLocation)
 void AWeaponBase::StopFire()
 {
 	GetWorld()->GetTimerManager().ClearTimer(RefireTimer);
+}
+
+FVector AWeaponBase::GetWeaponTargetLocation()
+{
+	ABaseCharacter* Character = Cast<ABaseCharacter>(GetOwner());
+
+	if (!Character)
+	{
+		return FVector::Zero();
+	}
+
+	FHitResult OutHit;
+
+	const FVector Start = Character->GetCameraComponent()->GetComponentLocation();
+	const FVector End = Start + (Character->GetCameraComponent()->GetForwardVector() * 10000.0f);
+
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+	QueryParams.AddIgnoredActor(Character);
+
+	GetWorld()->LineTraceSingleByChannel(OutHit, Start, End, ECC_Visibility, QueryParams);
+
+	// return either the impact point or the trace end
+	return OutHit.bBlockingHit ? OutHit.ImpactPoint : OutHit.TraceEnd;
 }
 

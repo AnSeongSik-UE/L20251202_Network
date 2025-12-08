@@ -3,9 +3,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "UObject/ObjectMacros.h"
 #include "GameFramework/Character.h"
 #include "GenericTeamAgentInterface.h"
 #include "BaseCharacter.generated.h"
+
+DECLARE_DELEGATE_OneParam(FOnCalculatedHP, const float);
 
 class UInputAction;
 class UAIPerceptionStimuliSourceComponent;
@@ -78,7 +81,12 @@ public:
 
 	UFUNCTION(Server, Reliable)
 	void C2S_Reload();
+	bool C2S_Reload_Validate();
 	void C2S_Reload_Implementation();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void S2A_Reload();
+	void S2A_Reload_Implementation();
 
 	UFUNCTION(BlueprintCallable)
 	void DoFire();
@@ -132,9 +140,6 @@ public:
 	TObjectPtr<UInputAction> IA_Sprint;
 
 	UFUNCTION(BlueprintCallable)
-	void HitReaction();
-
-	UFUNCTION(BlueprintCallable)
 	void ReloadWeapon();
 
 
@@ -157,6 +162,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void SpawnHitEffect(FHitResult Hit);
 
+	UFUNCTION(NetMulticast, Unreliable)
+	virtual void S2A_SpawnHitEffect(FHitResult Hit);
+	virtual void S2A_SpawnHitEffect_Implementation(FHitResult Hit);
+
 
 	UFUNCTION(BlueprintCallable)
 	void DoDeadEnd();
@@ -164,8 +173,16 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void DoDead();
 
+	UFUNCTION(NetMulticast, Unreliable)
+	void S2A_DoDead(FName InSectionName);
+	void S2A_DoDead_Implementation(FName InSectionName);
+
 	UFUNCTION(BlueprintCallable)
 	void DoHitReact();
+
+	UFUNCTION(NetMulticast, Unreliable)
+	void S2A_DoHitReact(FName InSectionName);
+	void S2A_DoHitReact_Implementation(FName InSectionName);
 
 
 	UFUNCTION()
@@ -206,6 +223,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	TObjectPtr<UParticleSystem> BloodEffect;
 
+	FOnCalculatedHP OnCalculateHP;
+
 
 //----------------------------------------------------------------------//
 // IGenericTeamAgentInterface
@@ -225,4 +244,6 @@ public:
 	void DrawFrustum();
 
 	FRotator GetAimOffset() const;
+
+	FRotator AimRotation;
 };

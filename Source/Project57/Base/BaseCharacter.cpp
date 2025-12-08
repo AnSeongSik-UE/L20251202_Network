@@ -19,7 +19,10 @@
 #include "Perception/AIPerceptionStimuliSourceComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
+#include "../InGame/InGameWidget.h"
 
+#include "../Network/NetworkUtil.h"
+#include "../Project57.h"
 
 
 // Sets default values
@@ -45,6 +48,10 @@ ABaseCharacter::ABaseCharacter()
 
 	SetGenericTeamId(1);
 
+	bReplicates = true;
+	SetReplicateMovement(true);
+	bNetLoadOnClient = true;
+	bNetUseOwnerRelevancy = true;
 }
 
 // Called when the game starts or when spawned
@@ -59,6 +66,8 @@ void ABaseCharacter::BeginPlay()
 void ABaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	AimRotation = FRotator::ZeroRotator;
 
 	//DrawFrustum();
 }
@@ -120,7 +129,21 @@ void ABaseCharacter::Reload()
 	C2S_Reload();
 }
 
+bool ABaseCharacter::C2S_Reload_Validate()
+{
+	return true;
+}
+
 void ABaseCharacter::C2S_Reload_Implementation()
+{
+	if (!HasAuthority())
+	{
+		return;
+	}
+	S2A_Reload();
+}
+
+void ABaseCharacter::S2A_Reload_Implementation()
 {
 	AWeaponBase* ChildWeapon = Cast<AWeaponBase>(Weapon->GetChildActor());
 	if (ChildWeapon)
@@ -166,13 +189,6 @@ void ABaseCharacter::C2S_StopFire_Implementation()
 	}
 }
 
-void ABaseCharacter::HitReaction()
-{
-	FString SectionName = FString::Printf(TEXT("%d"), FMath::RandRange(1, 8));
-
-	PlayAnimMontage(HitMontage, 1.0, FName(*SectionName) );
-}
-
 void ABaseCharacter::ReloadWeapon()
 {
 	AWeaponBase* ChildWeapon = Cast<AWeaponBase>(Weapon->GetChildActor());
@@ -197,6 +213,7 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 		if (Event)
 		{
 			CurrentHP -= DamageAmount;
+			OnCalculateHP.ExecuteIfBound(CurrentHP / MaxHP);
 		}
 
 		SpawnHitEffect(Event->HitInfo);
@@ -207,6 +224,7 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 		if (Event)
 		{
 			CurrentHP -= DamageAmount;
+			OnCalculateHP.Execute(CurrentHP / MaxHP);
 
 			UE_LOG(LogTemp, Warning, TEXT("Radial Damage %f %s"), DamageAmount, *Event->DamageTypeClass->GetName());
 		}
@@ -214,12 +232,11 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	else //(DamageEvent.IsOfType(FDamageEvent::ClassID))
 	{
 		CurrentHP -= DamageAmount;
+		OnCalculateHP.Execute(CurrentHP / MaxHP);
 		UE_LOG(LogTemp, Warning, TEXT("Damage %f"), DamageAmount);
 	}
 
 	DoHitReact();
-
-
 
 	if (CurrentHP <= 0)
 	{
@@ -233,21 +250,33 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 
 void ABaseCharacter::DoDeadEnd()
 {
-	GetController()->SetActorEnableCollision(false);
-	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	//GetController()->SetActorEnableCollision(false);
+	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 	GetMesh()->SetSimulatePhysics(true);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	SetPhysicsReplicationMode(EPhysicsReplicationMode::Resimulation);
 }
 
 void ABaseCharacter::DoDead()
 {
 	FName SectionName = FName(FString::Printf(TEXT("%d"), FMath::RandRange(1, 6)));
-	PlayAnimMontage(DeathMontage, 1.0f, SectionName);
+	S2A_DoDead(SectionName);
+}
+
+void ABaseCharacter::S2A_DoDead_Implementation(FName InSectionName)
+{
+	PlayAnimMontage(DeathMontage, 1.0f, InSectionName);
 }
 
 void ABaseCharacter::DoHitReact()
 {
 	FName SectionName = FName(FString::Printf(TEXT("%d"), FMath::RandRange(1, 8)));
-	PlayAnimMontage(HitMontage, 1.0f, SectionName);
+	S2A_DoHitReact(SectionName);
+}
+
+void ABaseCharacter::S2A_DoHitReact_Implementation(FName InSectionName)
+{
+	PlayAnimMontage(HitMontage, 1.0f, InSectionName);
 }
 
 void ABaseCharacter::ProcessBeginOverlap(AActor* OverlappedActor, AActor* OtherActor)
@@ -406,9 +435,14 @@ FGenericTeamId ABaseCharacter::GetGenericTeamId() const
 
 void ABaseCharacter::SpawnHitEffect(FHitResult Hit)
 {
+	S2A_SpawnHitEffect(Hit);
+}
+
+void ABaseCharacter::S2A_SpawnHitEffect_Implementation(FHitResult Hit)
+{
 	if (BloodEffect)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("BloodEffect"));
+		//UE_LOG(LogTemp, Warning, TEXT("BloodEffect"));
 		UGameplayStatics::SpawnEmitterAtLocation(
 			GetWorld(),
 			BloodEffect,
@@ -417,8 +451,6 @@ void ABaseCharacter::SpawnHitEffect(FHitResult Hit)
 		);
 	}
 }
-
-
 
 void ABaseCharacter::DrawFrustum()
 {

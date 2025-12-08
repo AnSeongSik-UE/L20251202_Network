@@ -37,6 +37,8 @@ void ALobbyGM::PostLogin(APlayerController* NewPlayer)
 void ALobbyGM::Logout(AController* Exiting)
 {
 	Super::Logout(Exiting);
+
+	CheckConnectionCount();
 }
 
 void ALobbyGM::BeginPlay()

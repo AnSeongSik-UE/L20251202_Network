@@ -15,7 +15,7 @@ void UAnimNotify_Reload::Notify(USkeletalMeshComponent* MeshComp, UAnimSequenceB
 
 	ABaseCharacter* BaseCharacter = Cast<ABaseCharacter>(MeshComp->GetOwner());
 	if (BaseCharacter)
-	{
+	{		
 		BaseCharacter->ReloadWeapon();
 	}
 
