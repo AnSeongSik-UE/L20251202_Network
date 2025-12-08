@@ -3,6 +3,9 @@
 
 #include "InGameGM.h"
 #include "InGameGS.h"
+#include "../Base/BaseCharacter.h"
+
+#include "Kismet/GameplayStatics.h"
 
 AInGameGM::AInGameGM()
 {
@@ -28,6 +31,7 @@ void AInGameGM::PostLogin(APlayerController* NewPlayer)
 
 void AInGameGM::Logout(AController* Exiting)
 {
+	CheckSurvivorCount();
 	Super::Logout(Exiting);
 }
 
@@ -36,18 +40,42 @@ void AInGameGM::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AInGameGM::CheckSurvivorCount()
+int32 AInGameGM::CheckSurvivorCount()
 {
+	int32 SurvivorCount = 0;
+	int32 PlayerCount = 0;
+
+	for (auto Iter = GetWorld()->GetPlayerControllerIterator(); Iter; ++Iter)
+	{
+		ABaseCharacter* Pawn = Cast<ABaseCharacter>((*Iter)->GetPawn());
+		if(Pawn)
+		{
+			PlayerCount++;
+			if(Pawn->CurrentHP > 0)
+			{
+				SurvivorCount++;
+			}
+		}
+	}
+
 	AInGameGS* GS = GetGameState<AInGameGS>();
 	if (GS)
 	{
-		int32 TempCount = 0;
-		for (auto Iter = GetWorld()->GetPlayerControllerIterator(); Iter; ++Iter)
-		{
-			TempCount++;
-		}
-		//GS->ConnectionCount = UGameplayStatics::GetNumPlayerControllers(GetWorld());
-		GS->SurvivorCount = TempCount;
-		GS->OnRep_SurvivorCount();
+		GS->UpdateSurvivorCount(SurvivorCount);
 	}
+
+	FTimerHandle EndTimer;
+	if(PlayerCount > 1 && SurvivorCount == 1)
+	{
+		GetWorld()->GetTimerManager().SetTimer(
+			EndTimer,
+			FTimerDelegate::CreateLambda([this]()
+				{
+					GetWorld()->ServerTravel(TEXT("Lobby"));
+				}),
+			10.0f,
+			false);
+	}
+
+	return SurvivorCount;
 }

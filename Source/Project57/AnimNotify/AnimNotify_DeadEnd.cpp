@@ -16,6 +16,7 @@ void UAnimNotify_DeadEnd::Notify(USkeletalMeshComponent* MeshComp, UAnimSequence
 	ABaseCharacter* Pawn = Cast<ABaseCharacter>(MeshComp->GetOwner());
 	if (Pawn)
 	{
-		Pawn->DoDeadEnd();
+		FHitResult InHitResult;
+		Pawn->DoDeadEnd(InHitResult);
 	}
 }

@@ -8,7 +8,7 @@
 #include "GenericTeamAgentInterface.h"
 #include "BaseCharacter.generated.h"
 
-DECLARE_DELEGATE_OneParam(FOnCalculatedHP, const float);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCalculatedHP, const float, InHPPercent);
 
 class UInputAction;
 class UAIPerceptionStimuliSourceComponent;
@@ -142,8 +142,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void ReloadWeapon();
 
+	UFUNCTION()
+	void OnRep_CurrentHP();
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, ReplicatedUsing = "OnRep_CurrentHP")
 	float CurrentHP = 100;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character, Replicated)
@@ -168,14 +170,14 @@ public:
 
 
 	UFUNCTION(BlueprintCallable)
-	void DoDeadEnd();
+	void DoDeadEnd(const FHitResult& InHitResult);
 
 	UFUNCTION(BlueprintCallable)
-	void DoDead();
+	void DoDead(const FHitResult& InHitResult);
 
 	UFUNCTION(NetMulticast, Unreliable)
-	void S2A_DoDead(FName InSectionName);
-	void S2A_DoDead_Implementation(FName InSectionName);
+	void S2A_DoDead(const FHitResult& InHitResult, FName InSectionName);
+	void S2A_DoDead_Implementation(const FHitResult& InHitResult, FName InSectionName);
 
 	UFUNCTION(BlueprintCallable)
 	void DoHitReact();
@@ -223,6 +225,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Character)
 	TObjectPtr<UParticleSystem> BloodEffect;
 
+	UPROPERTY(BlueprintAssignable)
 	FOnCalculatedHP OnCalculateHP;
 
 

@@ -20,6 +20,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Net/UnrealNetwork.h"
 #include "../InGame/InGameWidget.h"
+#include "../InGame/InGameGM.h"
 
 #include "../Network/NetworkUtil.h"
 #include "../Project57.h"
@@ -198,9 +199,16 @@ void ABaseCharacter::ReloadWeapon()
 	}
 }
 
+void ABaseCharacter::OnRep_CurrentHP()
+{
+	OnCalculateHP.Broadcast(CurrentHP / MaxHP);
+}
+
 float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	FHitResult HitResult;
 
 	if (CurrentHP <= 0)
 	{
@@ -213,10 +221,10 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 		if (Event)
 		{
 			CurrentHP -= DamageAmount;
-			OnCalculateHP.ExecuteIfBound(CurrentHP / MaxHP);
 		}
 
-		SpawnHitEffect(Event->HitInfo);
+		HitResult = Event->HitInfo;
+		SpawnHitEffect(HitResult);
 	}
 	else if (DamageEvent.IsOfType(FRadialDamageEvent::ClassID))
 	{
@@ -224,7 +232,6 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 		if (Event)
 		{
 			CurrentHP -= DamageAmount;
-			OnCalculateHP.Execute(CurrentHP / MaxHP);
 
 			UE_LOG(LogTemp, Warning, TEXT("Radial Damage %f %s"), DamageAmount, *Event->DamageTypeClass->GetName());
 		}
@@ -232,40 +239,49 @@ float ABaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageE
 	else //(DamageEvent.IsOfType(FDamageEvent::ClassID))
 	{
 		CurrentHP -= DamageAmount;
-		OnCalculateHP.Execute(CurrentHP / MaxHP);
 		UE_LOG(LogTemp, Warning, TEXT("Damage %f"), DamageAmount);
 	}
 
 	DoHitReact();
 
+	OnRep_CurrentHP();
+
 	if (CurrentHP <= 0)
 	{
-		//죽는다. 애님 몽타주 재생
-		//네트워크 할려면 다 RPC로 작업해 됨
-		DoDead();
+		AInGameGM* GM = Cast<AInGameGM>(UGameplayStatics::GetGameMode(GetWorld()));
+		if (GM)
+		{
+			GM->CheckSurvivorCount();
+		}
+		DoDead(HitResult);
 	}
 
 	return DamageAmount;
 }
 
-void ABaseCharacter::DoDeadEnd()
+void ABaseCharacter::DoDeadEnd(const FHitResult& InHitResult)
 {
 	//GetController()->SetActorEnableCollision(false);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_None);
 	GetMesh()->SetSimulatePhysics(true);
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-	SetPhysicsReplicationMode(EPhysicsReplicationMode::Resimulation);
+	GetMesh()->AddImpulse(-InHitResult.ImpactNormal * 10000.f, InHitResult.BoneName);
+
 }
 
-void ABaseCharacter::DoDead()
+void ABaseCharacter::DoDead(const FHitResult& InHitResult)
 {
 	FName SectionName = FName(FString::Printf(TEXT("%d"), FMath::RandRange(1, 6)));
-	S2A_DoDead(SectionName);
+	S2A_DoDead(InHitResult, SectionName);
 }
 
-void ABaseCharacter::S2A_DoDead_Implementation(FName InSectionName)
+void ABaseCharacter::S2A_DoDead_Implementation(const FHitResult& InHitResult, FName InSectionName)
 {
-	PlayAnimMontage(DeathMontage, 1.0f, InSectionName);
+	SetPhysicsReplicationMode(EPhysicsReplicationMode::Resimulation);
+	GetMesh()->SetIsReplicated(true);
+	DoDeadEnd(InHitResult);
+	//PlayAnimMontage(DeathMontage, 1.0f, InSectionName);
 }
 
 void ABaseCharacter::DoHitReact()

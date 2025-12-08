@@ -26,6 +26,6 @@ public:
 
 	virtual void BeginPlay() override;
 
-	void CheckSurvivorCount();
+	int32 CheckSurvivorCount();
 
 };

@@ -59,8 +59,16 @@ void AWeaponBase::Fire()
 {
 	float CurrentTimeofShoot = GetWorld()->TimeSeconds - TimeofLastShoot;
 
+	ABaseCharacter* Character = Cast<ABaseCharacter>(GetOwner());
+
 	if (CurrentTimeofShoot < RefireRate)
 	{
+		return;
+	}
+
+	if (CurrentBulletCount <= 0)
+	{
+		Character->Reload();
 		return;
 	}
 
@@ -69,7 +77,6 @@ void AWeaponBase::Fire()
 		GetWorld()->GetTimerManager().SetTimer(RefireTimer, this, &AWeaponBase::Fire, RefireRate, false);
 	}
 
-	ACharacter* Character = Cast<ACharacter>(GetOwner());
 
 	if (!Character)
 	{
@@ -112,7 +119,7 @@ void AWeaponBase::Fire()
 	Character->AddControllerPitchInput(-0.05f);
 
 	CurrentBulletCount--;
-	//UE_LOG(LogTemp, Warning, TEXT("Fire %d"), CurrentBulletCount);
+	UE_LOG(LogTemp, Warning, TEXT("Fire %d"), CurrentBulletCount);
 	S2A_SpawnSound(SpawnLocation);
 
 	TimeofLastShoot = GetWorld()->TimeSeconds;

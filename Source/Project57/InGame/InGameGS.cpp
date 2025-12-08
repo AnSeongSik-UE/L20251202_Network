@@ -17,5 +17,11 @@ void AInGameGS::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetim
 
 void AInGameGS::OnRep_SurvivorCount()
 {
-	OnChangeSurvivorCount.Broadcast(SurvivorCount);
+	OnChangeSurvivorCount.ExecuteIfBound(SurvivorCount);
+}
+
+void AInGameGS::UpdateSurvivorCount(int32 InSurvivorCount)
+{
+	SurvivorCount = InSurvivorCount;
+	OnRep_SurvivorCount();
 }

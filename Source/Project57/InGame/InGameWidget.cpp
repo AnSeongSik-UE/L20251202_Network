@@ -6,6 +6,7 @@
 #include "Components/ProgressBar.h"
 #include "../Base/BaseCharacter.h"
 #include "InGameGS.h"
+#include "InGameGM.h"
 
 #include "Kismet/GameplayStatics.h"
 
@@ -19,18 +20,29 @@ void UInGameWidget::NativeOnInitialized()
 	AInGameGS* GS = Cast<AInGameGS>(GetWorld()->GetGameState());
 	if (GS)
 	{
-		GS->OnChangeSurvivorCount.AddDynamic(this, &UInGameWidget::UpdateSurvivorCount);
+		GS->OnChangeSurvivorCount.BindUObject(this, &UInGameWidget::ProcessChangeSurvivorCount);
 	}
 
-	ABaseCharacter* Character = Cast<ABaseCharacter>(UGameplayStatics::GetPlayerController(GetWorld(), 0)->GetPawn());
-	if (Character)
+	AInGameGM* GM = Cast<AInGameGM>(UGameplayStatics::GetGameMode(GetWorld()));
+	if (GM)
 	{
-		Character->OnCalculateHP.BindUObject(this, &UInGameWidget::SetHPBar);
+		GM->CheckSurvivorCount();
+	}
+
+	APlayerController* PC = Cast<APlayerController>(GetOwningPlayer());
+	if (PC)
+	{
+		ABaseCharacter* Pawn = Cast<ABaseCharacter>(PC->GetPawn());
+		if(Pawn)
+		{
+			Pawn->OnCalculateHP.AddDynamic(this, &UInGameWidget::ProcessHPBar);
+			Pawn->OnRep_CurrentHP();
+		}
 	}
 	
 }
 
-void UInGameWidget::SetHPBar(float HPPercent)
+void UInGameWidget::ProcessHPBar(float HPPercent)
 {
 	if (HPBar)
 	{
@@ -38,11 +50,11 @@ void UInGameWidget::SetHPBar(float HPPercent)
 	}
 }
 
-void UInGameWidget::UpdateSurvivorCount(int32 InSurvivorCount)
+void UInGameWidget::ProcessChangeSurvivorCount(int32 InSurvivorCount)
 {
 	if (SurvivorCount)
 	{
-		FString CurrentSurvivorText = FString::Printf(TEXT("%d명 남음"), InSurvivorCount);
+		FString CurrentSurvivorText = FString::Printf(TEXT("%d명 생존"), InSurvivorCount);
 		SurvivorCount->SetText(FText::FromString(CurrentSurvivorText));
 	}
 }

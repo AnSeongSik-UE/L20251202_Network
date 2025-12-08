@@ -7,7 +7,7 @@
 #include "GameFramework/GameStateBase.h"
 #include "InGameGS.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnChangedSurvivorCount, const int32, InSurvivorCount);
+DECLARE_DELEGATE_OneParam(FOnChangedSurvivorCount, const int32);
 
 /**
  * 
@@ -27,7 +27,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Data", ReplicatedUsing = "OnRep_SurvivorCount")
 	int32 SurvivorCount = 100;
 	
-	UPROPERTY(BlueprintAssignable);
 	FOnChangedSurvivorCount OnChangeSurvivorCount;
+
+	void UpdateSurvivorCount(int32 InSurvivorCount);
 
 };

@@ -25,8 +25,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Component", meta = (WidgetBind))
 	TObjectPtr<UProgressBar> HPBar;
 
-	void SetHPBar(float HPPercent);
-
 	UFUNCTION()
-	void UpdateSurvivorCount(int32 InSurvivorCount);
+	void ProcessHPBar(float HPPercent);
+
+	void ProcessChangeSurvivorCount(int32 InSurvivorCount);
 };
